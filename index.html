@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✨ 15 Anos - Rayssa ✨ A Princesa e o Sapo 🐸</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Georgia', serif; }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #022E20 0%, #0B5345 40%, #1E8449 70%, #F4D03F 100%);
+            background-attachment: fixed;
+        }
+
+        .tela-video {
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: #000; z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 1; transition: opacity 1.2s ease;
+        }
+        .tela-video.oculto { opacity: 0; pointer-events: none; }
+        
+        .video-container { 
+            width: 100%; height: 100%; position: relative; overflow: hidden;
+        }
+        .video-container iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;
+        }
+
+        .conteudo {
+            max-width: 660px; margin: 0 auto; padding: 40px 20px;
+            opacity: 0; transform: translateY(20px);
+            transition: opacity 1.2s ease, transform 1.2s ease;
+            pointer-events: none;
+        }
+        .conteudo.visivel { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+        .cabecalho { text-align: center; color: #FEF9E7; margin-bottom: 40px; }
+        .cabecalho h1 { 
+            font-size: 2em; color: #F4D03F; margin-bottom: 15px; 
+            text-shadow: 0 0 15px rgba(244,208,63,0.4); cursor: pointer;
+        }
+        .cabecalho h2 { font-size: 1.3em; color: #F4D03F; margin-bottom: 20px; font-weight: normal; }
+        .mensagem-copiado {
+            display: none; background: #D4EDDA; color: #155724;
+            padding: 8px 16px; border-radius: 20px; font-size: 0.9em; margin: 10px auto; width: fit-content;
+        }
+        .mensagem-copiado.visivel { display: block; }
+        .mensagem-especial {
+            background: rgba(255,255,255,0.1); border-radius: 20px; padding: 30px 25px;
+            margin-bottom: 35px; text-align: center; color: #FEF9E7;
+            line-height: 1.9; border: 1px solid rgba(244,208,63,0.3);
+        }
+        .contador { display: flex; justify-content: center; gap: 12px; margin: 30px 0; flex-wrap: wrap; }
+        .contador-item {
+            background: linear-gradient(180deg, #F4D03F, #B7950B); color: #0B5345;
+            width: 80px; height: 80px; border-radius: 50%; display: flex;
+            flex-direction: column; align-items: center; justify-content: center;
+            box-shadow: 0 0 20px rgba(244,208,63,0.4);
+        }
+        .contador-num { font-size: 1.5em; font-weight: bold; line-height: 1; }
+        .contador-texto { font-size: 0.7em; text-transform: uppercase; margin-top: 3px; }
+
+        .cartao {
+            background: rgba(255,255,255,0.95); border-radius: 20px; padding: 35px 28px;
+            margin-bottom: 30px; box-shadow: 0 8px 35px rgba(0,0,0,0.15); position: relative; overflow: hidden;
+        }
+        .cartao::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 5px;
+            background: linear-gradient(90deg, #0B5345, #F4D03F, #0B5345);
+        }
+        .cartao h2 { color: #0B5345; text-align: center; font-size: 1.6em; margin-bottom: 8px; padding-top: 5px; }
+        .linha { width: 70px; height: 3px; background: linear-gradient(90deg, #F4D03F, #D4AC0D); margin: 0 auto 25px; border-radius: 2px; }
+        .form-grupo { margin-bottom: 18px; }
+        .form-grupo label { display: block; margin-bottom: 8px; color: #0B5345; font-weight: bold; }
+        .form-grupo input, .form-grupo textarea {
+            width: 100%; padding: 12px 15px; border: 2px solid #ddd; border-radius: 10px; font-size: 1em;
+        }
+        .form-grupo input:focus, .form-grupo textarea:focus { border-color: #F4D03F; outline: none; }
+        .pessoa-extra {
+            background: #F9F6E8; border-radius: 10px; padding: 15px; margin-top: 10px; display: none;
+        }
+        .pessoa-extra.ativa { display: block; }
+        .btn-principal {
+            display: block; width: 100%; background: linear-gradient(90deg, #0B5345, #1E8449);
+            color: white; border: none; padding: 16px; border-radius: 50px;
+            font-size: 1.1em; font-weight: bold; cursor: pointer; transition: transform 0.3s ease;
+        }
+        .btn-principal:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(30,132,73,0.3); }
+        .info-local p { text-align: center; font-size: 1em; line-height: 1.8; color: #333; }
+        .rodape { text-align: center; color: #FEF9E7; padding: 30px 20px 50px; font-size: 1em; line-height: 1.8; }
+        .rodape strong { color: #F4D03F; cursor: pointer; }
+
+        .popup-magico {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+            background: rgba(0,0,0,0.85); z-index: 10000;
+            display: none; align-items: center; justify-content: center; padding: 20px;
+        }
+        .popup-magico.aberto { display: flex; }
+        .popup-conteudo {
+            background: white; border-radius: 25px; padding: 30px 25px; max-width: 420px;
+            width: 100%; text-align: center; box-shadow: 0 0 60px rgba(244,208,63,0.4);
+            max-height: 90vh; overflow-y: auto; position: relative;
+            animation: aparece 0.4s ease-out;
+        }
+        @keyframes aparece {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .coroa { font-size: 3em; margin-bottom: 10px; animation: flutuar 3s ease-in-out infinite; }
+        @keyframes flutuar {
+            0%,100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .popup-conteudo h2 { color: #0B5345; font-size: 1.6em; margin-bottom: 10px; }
+        .popup-conteudo p { color: #555; margin-bottom: 15px; line-height: 1.6; font-size: 0.95em; }
+        .opcoes { display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px; }
+        .opcao-btn {
+            background: linear-gradient(90deg, #F4D03F, #B7950B); color: #0B5345;
+            border: none; padding: 15px; border-radius: 12px; font-size: 1em; font-weight: bold; cursor: pointer;
+            width: 100%; transition: transform 0.2s ease;
+        }
+        .opcao-btn:hover { transform: scale(1.02); }
+        .opcao-btn.secundario { background: linear-gradient(90deg, #0B5345, #1E8449); color: white; }
+        .caixa-interna { display: none; margin-top: 15px; padding-top: 15px; border-top: 2px dashed #eee; }
+        .caixa-interna.ativa { display: block; }
+        .caixa-interna textarea {
+            width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 10px; font-size: 1em; min-height: 100px; margin-bottom: 15px; resize: vertical;
+        }
+        .pix-caixa {
+            background: #FEF9E7; border-radius: 15px; padding: 20px; margin: 15px 0; border: 2px dashed #F4D03F;
+        }
+        .btn-pequeno {
+            background: #0B5345; color: white; border: none; padding: 10px 20px;
+            border-radius: 8px; font-size: 0.95em; cursor: pointer; margin-top: 10px;
+            width: 100%; transition: background 0.2s ease;
+        }
+        .btn-pequeno:hover { background: #094036; }
+        .btn-fechar {
+            position: absolute; top: 10px; right: 15px; background: none; border: none;
+            font-size: 1.8em; cursor: pointer; color: #999; transition: color 0.2s ease;
+        }
+        .btn-fechar:hover { color: #333; }
+        .etapa { display: none; }
+        .etapa.ativa { display: block; }
+        .coracao { display: inline-block; animation: pulsar 1s ease-in-out infinite; color: #E74C3C; }
+        @keyframes pulsar {
+            0%,100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        .aviso-sucesso {
+            background: #D4EDDA; color: #155724; padding: 15px; border-radius: 10px;
+            margin-top: 20px; text-align: center; display: none;
+        }
+        .aviso-sucesso.visivel { display: block; }
+        .carregando { color: #0B5345; font-size: 0.9em; margin-top: 10px; display: none; }
+        .carregando-pix { font-size: 0.85em; color: #888; }
+    </style>
+    
+    <!-- API da Vimeo para detectar quando o vídeo termina -->
+    <script src="https://player.vimeo.com/api/player.js"></script>
+</head>
+<body>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyC1n4y0E0S93oC-x3O-ltbRxFvf0re-c-I",
+            authDomain: "aniversario-da-rayssa-87ecf.firebaseapp.com",
+            projectId: "aniversario-da-rayssa-87ecf",
+            storageBucket: "aniversario-da-rayssa-87ecf.firebasestorage.app",
+            messagingSenderId: "970524466402",
+            appId: "1:970524466402:web:423ec899e681689de1d2bb",
+            measurementId: "G-BTGLF2X6NL"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    </script>
+
+    <div class="tela-video" id="telaVideo">
+        <div class="video-container">
+            <iframe 
+                id="vimeoPlayer"
+                src="https://player.vimeo.com/video/1230075480?autoplay=1"
+                frameborder="0"
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowfullscreen
+                title="15 da Rayssa">
+            </iframe>
+        </div>
+    </div>
+
+    <div class="conteudo" id="conteudo">
+        <div class="cabecalho">
+            <h1 onclick="copiarChavePixCabecalho()">✨ 15 Anos da Rayssa ✨</h1>
+            <div id="mensagemCopiarCabecalho" class="mensagem-copiado">✅ Chave PIX copiada!</div>
+            <p class="carregando-pix" id="statusPix></p>
+            <h2>Uma noite mágica como num conto de fadas 🐸👑</h2>
+        </div>
+
+        <div class="mensagem-especial">
+            <p>Querido(a) amigo(a) e familiar,</p>
+            <br>
+            <p>"Há quem diga que os sonhos são apenas histórias que contamos a nós mesmos... mas eu acredito que os sonhos podem se tornar realidade quando temos coragem para persegui-los."</p>
+            <br>
+            <p>Assim como a Princesa Tiana, convido você para celebrar meus 15 anos! Será uma honra ter sua presença nesta noite tão especial. 🌙✨</p>
+            <br>
+            <p><strong>Com todo meu carinho,<br>Rayssa 👑🐸💚</strong></p>
+        </div>
+
+        <div class="contador">
+            <div class="contador-item"><div class="contador-num" id="dias">00</div><div class="contador-texto">Dias</div></div>
+            <div class="contador-item"><div class="contador-num" id="horas">00</div><div class="contador-texto">Horas</div></div>
+            <div class="contador-item"><div class="contador-num" id="minutos">00</div><div class="contador-texto">Min</div></div>
+            <div class="contador-item"><div class="contador-num" id="segundos">00</div><div class="contador-texto">Seg</div></div>
+        </div>
+
+        <div class="cartao info-local">
+            <h2>📅 Detalhes da Festa</h2>
+            <div class="linha"></div>
+            <p>📅 <strong>21 de Novembro de 2026</strong><br>
+            🕗 <strong>20h00</strong><br>
+            📍 <strong>Rua Pedro Alvores Negromont – Bairro Jaçanã – Nº 86 – Ibirité</strong></p>
+        </div>
+
+        <div class="cartao">
+            <h2>💌 Confirmar Presença</h2>
+            <div class="linha"></div>
+            <form id="formConfirmacao">
+                <div class="form-grupo">
+                    <label for="nome">Seu nome completo ✨</label>
+                    <input type="text" id="nome" required placeholder="Digite seu nome completo">
+                </div>
+                <div class="form-grupo">
+                    <label for="quantos">Quantas pessoas vão? 👥</label>
+                    <input type="number" id="quantos" min="1" value="1" required oninput="atualizarCamposPessoas()">
+                </div>
+                <div id="pessoasExtrasContainer"></div>
+                <div class="form-grupo">
+                    <label for="mensagem">Deixe uma mensagem para a Rayssa 💚 (opcional)</label>
+                    <textarea id="mensagem" rows="3" placeholder="Escreva algo especial..."></textarea>
+                </div>
+                <button type="submit" class="btn-principal">🎉 Confirmar Presença</button>
+                <div id="carregando" class="carregando">Enviando...</div>
+                <div id="avisoSucesso" class="aviso-sucesso">✅ Presença confirmada com sucesso! Obrigada! 💚</div>
+            </form>
+        </div>
+
+        <div class="rodape">
+            Feito com <span class="coracao">❤️</span> e muita magia<br>
+            <strong onclick="copiarChavePixRodape()">Clique aqui para copiar a chave PIX 💚</strong>
+            <div id="mensagemCopiarRodape" class="mensagem-copiado">✅ Chave PIX copiada!</div>
+            <br>21 de Novembro de 2026 — Rayssa 15 Anos 🐸✨
+        </div>
+    </div>
+
+    <div class="popup-magico" id="popupMagico">
+        <div class="popup-conteudo">
+            <button class="btn-fechar" onclick="fecharPopup()">&times;</button>
+            <div class="etapa ativa" id="etapa1">
+                <div class="coroa">👑</div>
+                <h2>Que alegria receber você! ✨</h2>
+                <p>Como gostaria de presentear a Rayssa?</p>
+                <div class="opcoes">
+                    <button class="opcao-btn" onclick="mostrarEtapa('etapaPresente')">🎁 Levar um presente físico</button>
+                    <button class="opcao-btn secundario" onclick="mostrarEtapa('etapaPix')">💚 Mandar um valor por PIX</button>
+                </div>
+            </div>
+            <div class="etapa" id="etapaPresente">
+                <div class="coroa">🎁</div>
+                <h2>Que lindo! ✨</h2>
+                <p>Escreva abaixo o que você vai levar de presente:</p>
+                <div class="caixa-interna ativa">
+                    <div class="form-grupo">
+                        <label for="descricaoPresente">Seu presente 💚</label>
+                        <textarea id="descricaoPresente" placeholder="Ex: Jogo de lençóis, Panela elétrica..."></textarea>
+                    </div>
+                    <button class="opcao-btn" onclick="salvarPresente()">✅ Confirmar presente</button>
+                    <button class="opcao-btn secundario" onclick="mostrarEtapa('etapa1')">← Voltar</button>
+                </div>
+            </div>
+            <div class="etapa" id="etapaPix">
+                <div class="coroa">💚</div>
+                <h2>Que generosidade! ✨</h2>
+                <p>A Rayssa agradece de coração qualquer valor.<br>O valor sugerido é a partir de <strong>R$ 50,00</strong>, mas doe conforme seu coração desejar 🙏</p>
+                <div class="pix-caixa">
+                    <p style="font-weight: bold; color: #0B5345;">Chave PIX:</p>
+                    <p style="font-size: 1em; font-weight: bold; color: #0B5345;" id="chavePixPopup">🔄 Carregando...</p>
+                    <button class="btn-pequeno" onclick="copiarChavePixPopup()">📋 Copiar chave PIX</button>
+                    <p id="mensagemCopiarPopup" style="color: green; margin-top: 8px; display: none;">✅ Copiado! Agradecemos muito! 💚</p>
+                </div>
+                <button class="opcao-btn" onclick="salvarPix()">✅ Já enviei o PIX!</button>
+                <button class="opcao-btn secundario" onclick="mostrarEtapa('etapa1')">← Voltar</button>
+            </div>
+            <div class="etapa" id="etapaObrigado">
+                <div class="coroa">✨🐸✨</div>
+                <h2>Muito obrigada! 💚</h2>
+                <p>Sua presença e seu carinho são os maiores presentes que a Rayssa poderia receber. Nos vemos na festa! 🎉✨</p>
+                <button class="opcao-btn" onclick="fecharPopup()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DATA_FESTA = new Date("2026-11-21T20:00:00");
+        let CHAVE_PIX = '';
+        const telaVideo = document.getElementById('telaVideo');
+        const conteudo = document.getElementById('conteudo');
+        const avisoSucesso = document.getElementById('avisoSucesso');
+        const carregando = document.getElementById('carregando');
+        const popupMagico = document.getElementById('popupMagico');
+        let dadosTemp = {};
+
+        async function carregarChavePix() {
+            try {
+                const doc = await db.collection('configuracoes').doc('pix').get();
+                if (doc.exists && doc.data().chave) {
+                    CHAVE_PIX = doc.data().chave;
+                    document.getElementById('chavePixPopup').textContent = CHAVE_PIX;
+                } else {
+                    document.getElementById('chavePixPopup').textContent = 'Chave PIX em breve!';
+                }
+            } catch (erro) {
+                console.error("Erro ao carregar chave PIX:", erro);
+                document.getElementById('chavePixPopup').textContent = 'Indisponível no momento';
+            }
+        }
+        
+        carregarChavePix();
+
+        // ✅ AVANÇA AUTOMATICAMENTE QUANDO O VÍDEO TERMINA
+        function avancarParaConvite() {
+            telaVideo.classList.add('oculto');
+            setTimeout(function() {
+                conteudo.classList.add('visivel');
+            }, 300);
+        }
+
+        // Detecta quando o vídeo da Vimeo termina
+        let iframe = document.getElementById('vimeoPlayer');
+        let player = new Vimeo.Player(iframe);
+        
+        player.on('ended', function() {
+            avancarParaConvite();
+        });
+
+        // ⏱️ Plano B: se a API não funcionar, avançar após 60 segundos
+        setTimeout(function() {
+            if (!telaVideo.classList.contains('oculto')) {
+                avancarParaConvite();
+            }
+        }, 60000);
+
+        function copiarChavePixCabecalho() { copiarPixParaAreaTransferencia(); }
+        function copiarChavePixRodape() { copiarPixParaAreaTransferencia(); }
+        function copiarChavePixPopup() { copiarPixParaAreaTransferencia('Popup'); }
+        
+        function copiarPixParaAreaTransferencia(local = '') {
+            if (!CHAVE_PIX) { alert('Chave PIX ainda não cadastrada!'); return; }
+            navigator.clipboard.writeText(CHAVE_PIX).then(() => {
+                const msg = document.getElementById('mensagemCopiar' + (local || 'Cabecalho'));
+                if (msg) { msg.classList.add('visivel'); setTimeout(() => msg.classList.remove('visivel'), 2500); }
+                const msgPopup = document.getElementById('mensagemCopiarPopup');
+                if (msgPopup && local === 'Popup') { msgPopup.style.display = 'block'; setTimeout(() => msgPopup.style.display = 'none', 2500); }
+            });
+        }
+
+        function atualizarCamposPessoas() {
+            const quantidade = parseInt(document.getElementById('quantos').value) || 1;
+            const container = document.getElementById('pessoasExtrasContainer');
+            container.innerHTML = '';
+            for (let i = 1; i < quantidade; i++) {
+                const div = document.createElement('div');
+                div.className = 'pessoa-extra ativa';
+                div.innerHTML = `<div class="form-grupo"><label>Nome da ${i}ª pessoa 👤</label><input type="text" class="nome-acompanhante" placeholder="Digite o nome"></div>`;
+                container.appendChild(div);
+            }
+        }
+
+        // ✅ CONTADOR CORRIGIDO ✅
+        function atualizarContador() {
+            const agora = new Date();
+            const diferenca = DATA_FESTA - agora;
+            if (diferenca <= 0) {
+                document.getElementById('dias').textContent = "00";
+                document.getElementById('horas').textContent = "00";
+                document.getElementById('minutos').textContent = "00";
+                document.getElementById('segundos').textContent = "00";
+                return;
+            }
+            const dias = Math.floor(diferenca / (1000 * 60 * 60 * 24));
+            const horas = Math.floor((diferenca % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutos = Math.floor((diferenca % (1000 * 60 * 60)) / (1000 * 60));
+            const segundos = Math.floor((diferenca % (1000 * 60)) / 1000);
+            document.getElementById('dias').textContent = String(dias).padStart(2, '0');
+            document.getElementById('horas').textContent = String(horas).padStart(2, '0');
+            document.getElementById('minutos').textContent = String(minutos).padStart(2, '0');
+            document.getElementById('segundos').textContent = String(segundos).padStart(2, '0');
+        }
+        atualizarContador();
+        setInterval(atualizarContador, 1000);
+
+        document.getElementById('formConfirmacao').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const quantidade = parseInt(document.getElementById('quantos').value) || 1;
+            const acompanhantes = Array.from(document.querySelectorAll('.nome-acompanhante'))
+                .map(input => input.value.trim()).filter(nome => nome !== '');
+            dadosTemp = {
+                nome: document.getElementById('nome').value.trim(),
+                quantidade: quantidade,
+                acompanhantes: acompanhantes,
+                mensagem: document.getElementById('mensagem').value.trim(),
+                tipoPresente: '',
+                detalhePresente: '',
+                dataHora: new Date().toLocaleString('pt-BR'),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            popupMagico.classList.add('aberto');
+            mostrarEtapa('etapa1');
+        });
+
+        function mostrarEtapa(idEtapa) {
+            document.querySelectorAll('.etapa').forEach(el => el.classList.remove('ativa'));
+            document.getElementById(idEtapa).classList.add('ativa');
+        }
+
+        function fecharPopup() {
+            popupMagico.classList.remove('aberto');
+            avisoSucesso.classList.remove('visivel');
+            document.getElementById('formConfirmacao').reset();
+            document.getElementById('pessoasExtrasContainer').innerHTML = '';
+        }
+
+        async function salvarPresente() {
+            const presente = document.getElementById('descricaoPresente').value.trim();
+            if (!presente) { alert('Por favor, digite seu presente!'); return; }
+            
+            carregando.style.display = 'block';
+            dadosTemp.tipoPresente = 'Presente Físico';
+            dadosTemp.detalhePresente = presente;
+            
+            try {
+                await db.collection('confirmacoes').add(dadosTemp);
+                mostrarEtapa('etapaObrigado');
+                avisoSucesso.classList.add('visivel');
+            } catch (erro) {
+                alert('Erro ao salvar: ' + erro.message);
+            }
+            carregando.style.display = 'none';
+        }
+
+        async function salvarPix() {
+            carregando.style.display = 'block';
+            dadosTemp.tipoPresente = 'PIX';
+            dadosTemp.detalhePresente = 'Valor enviado por PIX';
+            
+            try {
+                await db.collection('confirmacoes').add(dadosTemp);
+                mostrarEtapa('etapaObrigado');
+                avisoSucesso.classList.add('visivel');
+            } catch (erro) {
+                alert('Erro ao salvar: ' + erro.message);
+            }
+            carregando.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
